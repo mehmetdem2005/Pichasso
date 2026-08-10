@@ -1,25 +1,5 @@
 create extension if not exists pgcrypto;
 
-create table if not exists public.humor_cards (
-  id uuid primary key default gen_random_uuid(),
-  slug text not null unique check (char_length(slug) between 1 and 80),
-  eyebrow text not null check (char_length(eyebrow) between 1 and 80),
-  title text not null check (char_length(title) between 1 and 140),
-  body text not null check (char_length(body) between 1 and 500),
-  module_type text not null check (module_type in (
-    'apple_meter', 'lahmacun_radar', 'blackout_palette',
-    'homebody_mode', 'wolf_signal', 'match_profile'
-  )),
-  payload jsonb not null default '{}'::jsonb,
-  sort_order integer not null default 0 check (sort_order >= 0),
-  is_published boolean not null default false,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
-alter table public.humor_cards enable row level security;
-revoke all on table public.humor_cards from anon, authenticated;
-
 create or replace function public.set_updated_at()
 returns trigger
 language plpgsql
@@ -30,24 +10,76 @@ begin
 end;
 $$;
 
-drop trigger if exists humor_cards_set_updated_at on public.humor_cards;
-create trigger humor_cards_set_updated_at
-before update on public.humor_cards
+create table if not exists public.projects (
+  id uuid primary key default gen_random_uuid(),
+  slug text not null unique check (char_length(slug) between 1 and 80),
+  name text not null check (char_length(name) between 1 and 120),
+  status text not null default 'draft' check (status in ('draft', 'published', 'archived')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.modules (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references public.projects(id) on delete cascade,
+  key text not null check (char_length(key) between 1 and 80),
+  kind text not null default 'unconfigured' check (char_length(kind) between 1 and 120),
+  status text not null default 'draft' check (status in ('draft', 'ready', 'published', 'disabled')),
+  config jsonb not null default '{}'::jsonb,
+  sort_order integer not null default 0 check (sort_order >= 0),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (project_id, key)
+);
+
+create table if not exists public.media_assets (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references public.projects(id) on delete cascade,
+  module_id uuid references public.modules(id) on delete set null,
+  storage_bucket text not null,
+  storage_path text not null,
+  original_name text not null,
+  mime_type text not null,
+  byte_size bigint check (byte_size is null or byte_size >= 0),
+  width integer check (width is null or width > 0),
+  height integer check (height is null or height > 0),
+  sort_order integer not null default 0 check (sort_order >= 0),
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (storage_bucket, storage_path)
+);
+
+create index if not exists modules_project_sort_idx on public.modules(project_id, sort_order);
+create index if not exists media_assets_project_idx on public.media_assets(project_id);
+create index if not exists media_assets_module_idx on public.media_assets(module_id);
+
+alter table public.projects enable row level security;
+alter table public.modules enable row level security;
+alter table public.media_assets enable row level security;
+
+revoke all on table public.projects from anon, authenticated;
+revoke all on table public.modules from anon, authenticated;
+revoke all on table public.media_assets from anon, authenticated;
+
+drop trigger if exists projects_set_updated_at on public.projects;
+create trigger projects_set_updated_at
+before update on public.projects
 for each row execute function public.set_updated_at();
 
-insert into public.humor_cards (slug, eyebrow, title, body, module_type, payload, sort_order, is_published)
-values
-  ('elma', 'meyve protokolü', 'Elma Endeksi', 'Sevdiği şeyleri normal söylemek yerine bilimsel cihaz varmış gibi ölçüyoruz.', 'apple_meter', '{}', 10, true),
-  ('lahmacun', 'kritik altyapı', 'Lahmacun Radarı', 'Asıl karakter testi: acı seviyesi. Sonuçların hukuki bağlayıcılığı yoktur.', 'lahmacun_radar', '{"options":["Bol acı","Orta acı","Acısız"]}', 20, true),
-  ('siyah', 'renk departmanı', 'Kromatik Tasarruf', 'Siyah seviyorsa paleti gereksiz yere kalabalık tutmanın anlamı yok.', 'blackout_palette', '{}', 30, true),
-  ('ev-modu', 'sosyal batarya', 'Ev Modu İşletim Sistemi', 'Dışarı çıkma talepleri merkezi sistem tarafından değerlendirilir ve çoğunlukla reddedilir.', 'homebody_mode', '{}', 40, true),
-  ('kurt', 'vahşi yaşam frekansı', 'Kurt Sinyali', 'Kurt sevgisini gereksiz derecede ciddi bir haberleşme protokolüne çevirdik.', 'wolf_signal', '{}', 50, true),
-  ('tip-profili', 'algoritmik dedikodu', 'Algoritmanın Fazla Bildiği Şeyler', 'Tercihleri birkaç etikete indirip yapay zekâymış gibi davranan tamamen gereksiz bir modül.', 'match_profile', '{"tags":["160 civarı","kumral","balık etli"]}', 60, true)
-on conflict (slug) do update set
-  eyebrow = excluded.eyebrow,
-  title = excluded.title,
-  body = excluded.body,
-  module_type = excluded.module_type,
-  payload = excluded.payload,
-  sort_order = excluded.sort_order,
-  is_published = excluded.is_published;
+drop trigger if exists modules_set_updated_at on public.modules;
+create trigger modules_set_updated_at
+before update on public.modules
+for each row execute function public.set_updated_at();
+
+drop trigger if exists media_assets_set_updated_at on public.media_assets;
+create trigger media_assets_set_updated_at
+before update on public.media_assets
+for each row execute function public.set_updated_at();
+
+insert into public.projects (slug, name, status)
+values ('pichasso', 'Pichasso', 'draft')
+on conflict (slug) do update set name = excluded.name;
+
+-- Intentionally no module/content seed data.
+-- Modules and their behavior are added only after a concrete idea is approved.
