@@ -29,7 +29,7 @@ services:
   - type: web
     name: pichasso-web
     runtime: static
-    buildCommand: printf 'window.__PICHASSO_CONFIG__={apiBaseUrl:"%s"};\n' "$API_BASE_URL" > apps/web/config.js
+    buildCommand: npm run build:web-config
     staticPublishPath: apps/web
     envVars:
       - key: API_BASE_URL

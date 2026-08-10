@@ -36,4 +36,18 @@ export class MediaService {
       signedUrl: data.signedUrl
     };
   }
+
+  async createSignedReadUrls(assets, expiresIn = 3600) {
+    const entries = await Promise.all(assets.map(async (asset) => {
+      if (asset.storage_bucket !== this.bucket) throw new Error('Media asset belongs to an unexpected bucket');
+      const { data, error } = await this.client.storage
+        .from(this.bucket)
+        .createSignedUrl(asset.storage_path, expiresIn);
+
+      if (error) throw new Error(`Signed media URL failed: ${error.message}`);
+      return [asset.id, data.signedUrl];
+    }));
+
+    return new Map(entries);
+  }
 }

@@ -20,6 +20,9 @@ for (const file of await walk(join(root, 'apps/web'))) {
   if (/SUPABASE_(SECRET|SERVICE_ROLE)_KEY|createClient\(|\/rest\/v1\/|\.storage\./.test(text)) {
     violations.push(`${relative(root, file)}: web katmanı doğrudan Supabase admin/database/storage erişimi içeremez.`);
   }
+  if (/\bfetch\s*\(/.test(text) && !file.endsWith('api-client.js')) {
+    violations.push(`${relative(root, file)}: ağ erişimi yalnızca api-client.js içinde bulunabilir.`);
+  }
 }
 
 for (const file of await walk(join(root, 'apps/api/src/modules'))) {

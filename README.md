@@ -1,74 +1,56 @@
 # Pichasso
 
-Pichasso şu anda yalnızca altyapı içerir. İçerik, mizah, görsel stil ve modül davranışları seed edilmez; her modül ancak fikir onaylandıktan sonra eklenir.
+Pichasso, fotoğraf ve sorulardan oluşan paylaşılabilir kütüphaneler hazırlamak için geliştirilmiş mobil uyumlu bir içerik stüdyosudur.
+
+## Neler hazır?
+
+- Fotoğraf, kart arka planı, soru ve ek yazı yükleme/düzenleme
+- Kart sırasını değiştirme ve silme
+- Kütüphane bazında renk teması
+- Taslak veya yayında durumu
+- `?library=kisa-ad` biçiminde paylaşılabilir bağlantı
+- Mobil kaydırma, geri/geç düğmeleri ve klavye yön tuşları
+- Private Supabase Storage ve süreli görüntüleme bağlantıları
+- Yönetim anahtarının yalnızca API katmanında doğrulanması
+- Render için web ve API servis tanımları
 
 ## Mimari
 
 Akış: `Browser -> Render Web -> Render API -> Supabase`.
 
-- `apps/web`: Public istemci kabuğu. Supabase'e doğrudan bağlanmaz.
-- `apps/api`: Node.js API. Supabase admin anahtarı yalnızca burada bulunur.
-- `apps/api/src/modules/core`: Proje, modül ve medya metadata iş kuralları.
-- `apps/api/src/modules/media`: Supabase Storage signed-upload altyapısı.
-- `packages/contracts`: Katmanlar arası nötr veri sözleşmeleri.
-- `supabase/migrations`: `projects`, `modules`, `media_assets` şeması.
-- `scripts/check-architecture.mjs`: Katman sınırlarını denetleyen anti-spaghetti kontrolü.
-- `render.yaml`: Render API + static web Blueprint.
+- `apps/web`: Public görüntüleyici ve içerik stüdyosu. Supabase anahtarı içermez.
+- `apps/api`: Node.js API ve güvenlik sınırı.
+- `apps/api/src/modules/library`: Kütüphane iş kuralları ve veri erişimi.
+- `apps/api/src/modules/media`: Süreli yükleme/görüntüleme bağlantıları.
+- `packages/contracts`: Sunucuya giren içeriğin doğrulanması.
+- `supabase/migrations`: Tablolar, RLS, private bucket ve atomik kayıt fonksiyonu.
+- `scripts/check-architecture.mjs`: Katman ihlallerini yakalayan anti-spaghetti kontrolü.
+- `render.yaml`: Render Blueprint tanımı; otomatik deploy yapılmamıştır.
 
 ## Veri modeli
 
-`projects`
-- Uygulama/proje kökü.
+- `projects`: Uygulama kökü.
+- `libraries`: Paylaşılabilir koleksiyon ve tema bilgileri.
+- `slides`: Sıralı sorular, yazılar ve medya bağlantıları.
+- `media_assets`: Supabase Storage dosya metadata kayıtları.
 
-`modules`
-- Sonradan eklenecek her ayrı fikir/mekanizma için nötr kayıt.
-- `kind` ve `config` alanları fikir gelene kadar herhangi bir davranış varsaymaz.
+Storage bucket `pichasso-media` private kalır. Public görüntüleyici dosyanın kalıcı adresini değil, API'nin oluşturduğu süreli bağlantıyı alır.
 
-`media_assets`
-- Fotoğraf/görsel metadata kaydı.
-- Dosyanın kendisi Supabase Storage'da tutulur.
-- Bir asset proje geneline veya belirli bir module bağlanabilir.
-
-Başlangıç migration'ında hiçbir mizah içeriği veya örnek modül yoktur.
-
-## Fotoğraf yükleme altyapısı
-
-Supabase Dashboard üzerinden private bir `pichasso-media` bucket oluştur.
-
-Önerilen kısıtlar:
-- MIME: `image/jpeg`, `image/png`, `image/webp`, `image/avif`
-- Maksimum dosya boyutu: ihtiyaca göre belirle; başlangıç için 10 MB uygundur.
-
-API akışı:
-1. Admin istemci `POST /api/v1/admin/media/sign-upload` çağırır.
-2. API Supabase Storage için signed upload üretir.
-3. Dosya Storage'a yüklenir.
-4. `POST /api/v1/admin/media/complete` ile `media_assets` metadata kaydı tamamlanır.
-
-Admin uçları `x-admin-key` header'ı ile korunur.
-
-## Ortam değişkenleri
-
-API:
-- `SUPABASE_URL`
-- `SUPABASE_SECRET_KEY`
-- `ADMIN_API_KEY`
-- `MEDIA_BUCKET=pichasso-media`
-- `WEB_ORIGIN`
-
-Web build:
-- `API_BASE_URL`
-
-## Render
-
-`render.yaml` iki servis tanımlar:
-- `pichasso-api`
-- `pichasso-web`
-
-## Kontrol
+## Yerel kontrol
 
 ```bash
+npm install
 npm run verify
 ```
 
-Bu komut servis testlerini ve mimari sınır kontrolünü çalıştırır.
+API'yi çalıştırmak için `.env.example` değerlerini gerçek ortam değişkenleri olarak tanımlayıp:
+
+```bash
+npm run start:api
+```
+
+`apps/web` klasörünü herhangi bir statik sunucuyla açabilirsin. Varsayılan geliştirme API adresi `http://localhost:10000` değeridir.
+
+## Canlıya alma
+
+Henüz canlıya alınmadı. Supabase ve Render üzerinde senin tamamlayacağın adımlar [KURULUM.md](KURULUM.md) dosyasındadır.
