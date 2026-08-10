@@ -1,0 +1,15 @@
+{
+  "name": "pichasso",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start:api": "node apps/api/src/server.mjs",
+    "test": "node --test apps/api/test/*.test.mjs",
+    "architecture:check": "node scripts/check-architecture.mjs",
+    "verify": "npm run architecture:check && npm test"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
