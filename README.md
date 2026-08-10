@@ -5,7 +5,7 @@ Kişiye özel mizah modüllerini Supabase verisinden üreten, Render üzerinde w
 ## Mimari
 
 - `apps/web`: Bağımlılıksız statik istemci. Yalnızca Pichasso API ile konuşur.
-- `apps/api`: Node.js 20 HTTP servisi. Supabase service-role anahtarının tek sahibi.
+- `apps/api`: Node.js 20 HTTP servisi. Supabase secret/admin anahtarının tek sahibi.
 - `packages/contracts`: API veri sözleşmesi ve runtime doğrulaması.
 - `supabase/migrations`: Şema, RLS ve başlangıç içerikleri.
 - `scripts/check-architecture.mjs`: Web/API katman sınırlarını denetleyen anti-spaghetti kontrolü.
@@ -15,7 +15,7 @@ Akış: `Browser -> Render Web -> Render API -> Supabase`.
 
 ## Neden frontend doğrudan Supabase'e bağlanmıyor?
 
-Service-role anahtarı hiçbir zaman tarayıcıya gitmez. Veri erişimi repository katmanında kalır; route/server, service ve database sorumlulukları birbirine karışmaz. Admin paneli, analitik veya farklı veri kaynağı eklemek gerektiğinde frontend mimarisi değişmez.
+Supabase `sb_secret_...` anahtarı hiçbir zaman tarayıcıya gitmez. Veri erişimi repository katmanında kalır; server, service ve database sorumlulukları birbirine karışmaz. Admin paneli, analitik veya farklı veri kaynağı eklemek gerektiğinde frontend mimarisi değişmez.
 
 ## Lokal doğrulama
 
@@ -37,10 +37,12 @@ Repo Render'a Blueprint olarak bağlandığında `render.yaml` iki servis tanım
 
 API secret/env:
 - `SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_SECRET_KEY` (önerilen yeni `sb_secret_...` anahtarı)
 - `WEB_ORIGIN` = deploy edilen `pichasso-web` adresi
 
 Web build env:
 - `API_BASE_URL` = deploy edilen `pichasso-api` adresi
 
 `WEB_ORIGIN` ve `API_BASE_URL` birbirinin gerçek Render URL'leri ile doldurulmalıdır.
+
+Kod, geçiş dönemi için eski `SUPABASE_SERVICE_ROLE_KEY` değişkenini de yedek olarak kabul eder; yeni kurulumda kullanılmamalıdır.
