@@ -2,6 +2,11 @@
 
 Pichasso şu anda yalnızca altyapı içerir. İçerik, mizah, görsel stil ve modül davranışları seed edilmez; her modül ancak fikir onaylandıktan sonra eklenir.
 
+## Gereksinimler
+
+Node.js 22+. `@supabase/supabase-js` istemciyi kurarken native `WebSocket`
+beklediği için Node 20 üzerinde API açılışta çöker.
+
 ## Mimari
 
 Akış: `Browser -> Render Web -> Render API -> Supabase`.
