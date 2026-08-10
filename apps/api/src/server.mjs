@@ -1,15 +1,25 @@
 import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { loadEnv } from './config/env.mjs';
-import { SupabaseRestClient } from './lib/supabase-rest.mjs';
-import { CardsRepository } from './modules/cards/cards.repository.mjs';
-import { CardsService } from './modules/cards/cards.service.mjs';
+import { createSupabaseAdminClient } from './lib/supabase.mjs';
+import { CoreRepository } from './modules/core/core.repository.mjs';
+import { CoreService } from './modules/core/core.service.mjs';
+import { MediaService } from './modules/media/media.service.mjs';
 import { consumeRateLimit, securityHeaders } from './http/security.mjs';
+import { isAdminRequest } from './http/admin-auth.mjs';
+import { readJson } from './http/body.mjs';
 import { sendJson } from './http/respond.mjs';
 
 const env = loadEnv();
-const db = new SupabaseRestClient({ baseUrl: env.supabaseUrl, adminKey: env.supabaseAdminKey });
-const cardsService = new CardsService(new CardsRepository(db));
+const supabase = createSupabaseAdminClient({ url: env.supabaseUrl, key: env.supabaseAdminKey });
+const coreService = new CoreService(new CoreRepository(supabase));
+const mediaService = new MediaService({ client: supabase, bucket: env.mediaBucket });
+
+function adminOnly(req, res, headers, requestId) {
+  if (isAdminRequest(req, env.adminApiKey)) return true;
+  sendJson(res, 401, { error: 'unauthorized', requestId }, headers);
+  return false;
+}
 
 const server = createServer(async (req, res) => {
   const requestId = randomUUID();
@@ -30,19 +40,52 @@ const server = createServer(async (req, res) => {
       return sendJson(res, 200, { status: 'ok' }, baseHeaders);
     }
 
-    if (req.method === 'GET' && url.pathname === '/api/v1/cards') {
-      const controller = new AbortController();
-      const abort = () => controller.abort();
-      req.once('close', abort);
-      const payload = await cardsService.getPublishedCards({ signal: controller.signal });
-      req.off('close', abort);
+    if (req.method === 'GET' && url.pathname === '/api/v1/project') {
+      const payload = await coreService.getProjectSnapshot(url.searchParams.get('slug') ?? 'pichasso');
+      if (!payload) return sendJson(res, 404, { error: 'project_not_found', requestId }, baseHeaders);
       return sendJson(res, 200, payload, { ...baseHeaders, 'cache-control': 'public, max-age=30, stale-while-revalidate=120' });
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/v1/admin/media/sign-upload') {
+      if (!adminOnly(req, res, baseHeaders, requestId)) return;
+      const body = await readJson(req);
+      const upload = await mediaService.createSignedUpload(body);
+      return sendJson(res, 201, upload, baseHeaders);
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/v1/admin/media/complete') {
+      if (!adminOnly(req, res, baseHeaders, requestId)) return;
+      const body = await readJson(req);
+      if (!body.projectId || !body.path || !body.originalName || !body.mimeType) {
+        return sendJson(res, 400, { error: 'invalid_media_metadata', requestId }, baseHeaders);
+      }
+      if (body.bucket && body.bucket !== env.mediaBucket) {
+        return sendJson(res, 400, { error: 'invalid_media_bucket', requestId }, baseHeaders);
+      }
+      if (!body.path.startsWith(`projects/${body.projectId}/`)) {
+        return sendJson(res, 400, { error: 'invalid_media_path', requestId }, baseHeaders);
+      }
+
+      const asset = await coreService.registerMediaAsset({
+        projectId: body.projectId,
+        moduleId: body.moduleId ?? null,
+        bucket: env.mediaBucket,
+        path: body.path,
+        originalName: body.originalName,
+        mimeType: body.mimeType,
+        byteSize: body.byteSize ?? null,
+        width: body.width ?? null,
+        height: body.height ?? null,
+        metadata: body.metadata ?? {}
+      });
+      return sendJson(res, 201, { asset }, baseHeaders);
     }
 
     return sendJson(res, 404, { error: 'not_found', requestId }, baseHeaders);
   } catch (error) {
-    console.error(JSON.stringify({ level: 'error', requestId, message: error instanceof Error ? error.message : String(error) }));
-    return sendJson(res, 500, { error: 'content_unavailable', requestId }, baseHeaders);
+    const clientError = error instanceof TypeError || error instanceof SyntaxError || error instanceof RangeError;
+    console.error(JSON.stringify({ level: clientError ? 'warn' : 'error', requestId, message: error instanceof Error ? error.message : String(error) }));
+    return sendJson(res, clientError ? 400 : 500, { error: clientError ? 'invalid_request' : 'service_unavailable', requestId }, baseHeaders);
   }
 });
 
