@@ -1,17 +1,18 @@
-const apiBaseUrl = (window.__PICHASSO_CONFIG__?.apiBaseUrl || 'http://localhost:10000').replace(/\/$/, '');
+import { getJson, PROJECT_SLUG } from '/api.js';
+
 const status = document.querySelector('#status');
 const modulesRoot = document.querySelector('#modules');
 const galleryRoot = document.querySelector('#gallery');
+const emptyState = document.querySelector('#empty');
 
-async function getJson(path) {
-  const response = await fetch(`${apiBaseUrl}${path}`, { headers: { accept: 'application/json' } });
-  if (!response.ok) throw new Error(`API ${response.status}`);
-  return response.json();
+function onRetry() {
+  status.textContent = 'Sunucu uyanıyor, ilk açılış bir dakikayı bulabilir…';
 }
 
 function renderGallery(assets) {
   if (assets.length === 0) {
     galleryRoot.hidden = true;
+    emptyState.hidden = false;
     return;
   }
 
@@ -32,11 +33,12 @@ function renderGallery(assets) {
 
   galleryRoot.replaceChildren(fragment);
   galleryRoot.hidden = false;
+  emptyState.hidden = true;
 }
 
 async function boot() {
   try {
-    const payload = await getJson('/api/v1/project?slug=pichasso');
+    const payload = await getJson(`/api/v1/project?slug=${PROJECT_SLUG}`, { onRetry });
     const modules = Array.isArray(payload.modules) ? payload.modules : [];
 
     status.textContent = modules.length === 0
@@ -51,7 +53,7 @@ async function boot() {
   }
 
   try {
-    const media = await getJson('/api/v1/media?slug=pichasso');
+    const media = await getJson(`/api/v1/media?slug=${PROJECT_SLUG}`, { onRetry });
     renderGallery(Array.isArray(media.assets) ? media.assets : []);
   } catch (error) {
     console.error(error);

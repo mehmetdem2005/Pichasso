@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0a0a0a" />
+  <meta name="description" content="Pichasso yükleme" />
+  <meta name="robots" content="noindex" />
+  <title>Pichasso · Yükleme</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <main id="app">
+    <h1>Yükleme</h1>
+    <p id="status">Yönetici anahtarını gir, sonra fotoğraf seç.</p>
+
+    <form id="form" class="panel">
+      <label for="key">Yönetici anahtarı</label>
+      <input id="key" type="password" autocomplete="current-password" spellcheck="false" />
+
+      <label for="files">Fotoğraflar</label>
+      <input id="files" type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple />
+
+      <button id="submit" type="submit">Yükle</button>
+    </form>
+
+    <ul id="results" class="results"></ul>
+    <p><a href="/">← Galeriye dön</a></p>
+  </main>
+  <script src="/config.js"></script>
+  <script type="module" src="/admin.js"></script>
+</body>
+</html>
