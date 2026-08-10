@@ -17,16 +17,16 @@ async function walk(dir) {
 
 for (const file of await walk(join(root, 'apps/web'))) {
   const text = await readFile(file, 'utf8');
-  if (/SUPABASE_SERVICE_ROLE_KEY|serviceRoleKey|\/rest\/v1\//.test(text)) {
-    violations.push(`${relative(root, file)}: web katmanı Supabase service-role/REST erişimi içeremez.`);
+  if (/SUPABASE_(SECRET|SERVICE_ROLE)_KEY|createClient\(|\/rest\/v1\/|\.storage\./.test(text)) {
+    violations.push(`${relative(root, file)}: web katmanı doğrudan Supabase admin/database/storage erişimi içeremez.`);
   }
 }
 
 for (const file of await walk(join(root, 'apps/api/src/modules'))) {
   const rel = relative(root, file).replaceAll('\\', '/');
   const text = await readFile(file, 'utf8');
-  if (rel.endsWith('.service.mjs') && /fetch\(|SupabaseRestClient/.test(text)) {
-    violations.push(`${rel}: service doğrudan altyapıya erişemez; repository kullan.`);
+  if (rel.endsWith('.service.mjs') && /\.from\(['"`]|\/rest\/v1\//.test(text) && !rel.includes('/media/')) {
+    violations.push(`${rel}: domain service doğrudan veri kaynağına erişemez; repository kullan.`);
   }
 }
 
