@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: pichasso-api
+    runtime: node
+    plan: free
+    buildCommand: npm run verify
+    startCommand: npm run start:api
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 20.18.0
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: 10000
+      - key: WEB_ORIGIN
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+
+  - type: web
+    name: pichasso-web
+    runtime: static
+    buildCommand: printf 'window.__PICHASSO_CONFIG__={apiBaseUrl:"%s"};\n' "$API_BASE_URL" > apps/web/config.js
+    staticPublishPath: apps/web
+    envVars:
+      - key: API_BASE_URL
+        sync: false
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
