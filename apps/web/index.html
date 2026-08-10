@@ -3,22 +3,16 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#09090b" />
-  <meta name="description" content="Pichasso — her özelliği farklı mizah mekanizmasına dönüştüren kişisel dosya." />
+  <meta name="theme-color" content="#0a0a0a" />
+  <meta name="description" content="Pichasso" />
   <title>Pichasso</title>
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
-  <main>
-    <section class="hero">
-      <div class="hero-kicker">PICHASSO / KİŞİSEL DOSYA</div>
-      <h1>Bir insanı düz anlatmak<br />fazla kolay olurdu.</h1>
-      <p>Her özellik kendi saçma mekanizmasına sahip. Aynı şaka iki kez kullanılmaz.</p>
-    </section>
-    <section id="cards" class="cards" aria-live="polite">
-      <div class="system-message">Dosya açılıyor…</div>
-    </section>
-    <footer>İçerik Supabase’ten gelir. Şaka motoru değiştirilebilir; mimari kalır.</footer>
+  <main id="app" aria-live="polite">
+    <h1>Pichasso</h1>
+    <p id="status">Altyapı yükleniyor…</p>
+    <section id="modules" hidden></section>
   </main>
   <script src="/config.js"></script>
   <script type="module" src="/app.js"></script>
