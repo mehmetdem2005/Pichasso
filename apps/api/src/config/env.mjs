@@ -5,8 +5,8 @@ function requireUrl(name, value) {
 }
 
 export function loadEnv(source = process.env) {
-  const serviceKey = source.SUPABASE_SERVICE_ROLE_KEY;
-  if (!serviceKey || serviceKey.length < 20) throw new Error('Missing or invalid SUPABASE_SERVICE_ROLE_KEY');
+  const adminKey = source.SUPABASE_SECRET_KEY ?? source.SUPABASE_SERVICE_ROLE_KEY;
+  if (!adminKey || adminKey.length < 20) throw new Error('Missing SUPABASE_SECRET_KEY (or legacy SUPABASE_SERVICE_ROLE_KEY)');
 
   return Object.freeze({
     nodeEnv: source.NODE_ENV ?? 'development',
@@ -14,6 +14,6 @@ export function loadEnv(source = process.env) {
     port: Number.parseInt(source.PORT ?? '10000', 10),
     webOrigin: requireUrl('WEB_ORIGIN', source.WEB_ORIGIN ?? 'http://localhost:5173'),
     supabaseUrl: requireUrl('SUPABASE_URL', source.SUPABASE_URL),
-    supabaseServiceRoleKey: serviceKey
+    supabaseAdminKey: adminKey
   });
 }
