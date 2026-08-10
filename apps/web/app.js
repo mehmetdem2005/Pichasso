@@ -1,26 +1,45 @@
-const apiBaseUrl = (window.__PICHASSO_CONFIG__?.apiBaseUrl || 'http://localhost:10000').replace(/\/$/, '');
-const status = document.querySelector('#status');
-const modulesRoot = document.querySelector('#modules');
+import { PichassoApi } from './api-client.js';
+import { mountViewer } from './viewer.js';
+import { mountAdmin } from './admin.js';
 
-async function boot() {
-  try {
-    const response = await fetch(`${apiBaseUrl}/api/v1/project?slug=pichasso`, {
-      headers: { accept: 'application/json' }
-    });
-    if (!response.ok) throw new Error(`API ${response.status}`);
+const apiBaseUrl = window.__PICHASSO_CONFIG__?.apiBaseUrl || 'http://localhost:10000';
+const api = new PichassoApi(apiBaseUrl);
+const params = new URLSearchParams(window.location.search);
 
-    const payload = await response.json();
-    const modules = Array.isArray(payload.modules) ? payload.modules : [];
-
-    status.textContent = modules.length === 0
-      ? 'Altyapı hazır. Henüz içerik/modül tanımlanmadı.'
-      : `${modules.length} modül yapılandırıldı.`;
-
-    modulesRoot.hidden = true;
-  } catch (error) {
-    console.error(error);
-    status.textContent = 'API bağlantısı kurulamadı.';
-  }
+function showFatal(error) {
+  document.querySelectorAll('#app > section').forEach((section) => { section.hidden = true; });
+  const view = document.querySelector('#fatalError');
+  document.querySelector('#fatalErrorMessage').textContent = error.message || 'Beklenmeyen bir hata oluştu.';
+  view.hidden = false;
 }
 
-boot();
+function mountLanding() {
+  const view = document.querySelector('#landingView');
+  const form = document.querySelector('#openLibraryForm');
+  view.hidden = false;
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const slug = String(new FormData(form).get('library') || '').trim().toLowerCase();
+    if (!slug) return;
+    const url = new URL(window.location.origin);
+    url.searchParams.set('library', slug);
+    window.location.assign(url);
+  });
+}
+
+async function boot() {
+  if (params.has('admin')) {
+    mountAdmin({ api });
+    return;
+  }
+
+  const slug = params.get('library');
+  if (slug) {
+    await mountViewer({ api, slug });
+    return;
+  }
+
+  mountLanding();
+}
+
+boot().catch(showFatal);

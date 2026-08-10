@@ -6,7 +6,7 @@ const MAX_TRACKED_CLIENTS = 10_000;
 export function securityHeaders(origin) {
   return {
     'access-control-allow-origin': origin,
-    'access-control-allow-methods': 'GET,POST,OPTIONS',
+    'access-control-allow-methods': 'GET,POST,PUT,DELETE,OPTIONS',
     'access-control-allow-headers': 'content-type,x-admin-key',
     'content-security-policy': "default-src 'none'; frame-ancestors 'none'",
     'cross-origin-resource-policy': 'same-site',

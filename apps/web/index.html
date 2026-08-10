@@ -1,20 +1,171 @@
 <!doctype html>
 <html lang="tr">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#0a0a0a" />
-  <meta name="description" content="Pichasso" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#16130f">
+  <meta name="description" content="Pichasso fotoğraf ve soru kütüphaneleri">
   <title>Pichasso</title>
-  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-  <main id="app" aria-live="polite">
-    <h1>Pichasso</h1>
-    <p id="status">Altyapı yükleniyor…</p>
-    <section id="modules" hidden></section>
+  <main id="app" class="app" aria-live="polite">
+    <section id="landingView" class="landing" hidden>
+      <div class="brand-mark" aria-hidden="true">P</div>
+      <p class="eyebrow">Pichasso</p>
+      <h1>Fotoğrafların bir hikâyeye dönüşsün.</h1>
+      <p class="landing-copy">Paylaşılan bir kütüphaneyi aç veya kendi içeriğini hazırla.</p>
+      <form id="openLibraryForm" class="open-form">
+        <label for="librarySlug">Kütüphane kısa adı</label>
+        <div class="inline-field">
+          <input id="librarySlug" name="library" autocomplete="off" placeholder="örnek: hasan" required>
+          <button class="button button--primary" type="submit">Aç</button>
+        </div>
+      </form>
+      <a class="text-link" href="/?admin=1">İçerik stüdyosuna gir →</a>
+    </section>
+
+    <section id="viewerView" class="viewer-shell" hidden>
+      <div id="pageBackdrop" class="page-backdrop" aria-hidden="true"></div>
+      <article class="viewer-card">
+        <header class="viewer-header">
+          <div>
+            <p class="eyebrow">Fotoğraf &amp; Soru</p>
+            <h1 id="viewerTitle">Kütüphane</h1>
+          </div>
+          <button id="shareButton" class="icon-button" type="button" aria-label="Kütüphane bağlantısını paylaş">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4"/></svg>
+          </button>
+        </header>
+
+        <div id="viewerEmpty" class="empty-state" hidden>
+          <span class="empty-icon">＋</span>
+          <h2>Henüz kart eklenmemiş</h2>
+          <p>Bu kütüphane yayımlandı fakat içeriği henüz hazırlanmadı.</p>
+        </div>
+
+        <div id="slideStage" class="slide-stage" hidden>
+          <img id="slidePhoto" class="slide-photo" alt="" draggable="false">
+          <div class="slide-fallback" id="slideFallback" aria-hidden="true"></div>
+          <div class="slide-shade" aria-hidden="true"></div>
+          <div class="slide-copy">
+            <p class="question-label">Soru</p>
+            <h2 id="slideQuestion"></h2>
+            <p id="slideBody"></p>
+          </div>
+        </div>
+
+        <div id="viewerProgress" class="progress" aria-label="Kartlar"></div>
+        <div id="viewerControls" class="viewer-controls" hidden>
+          <button id="backButton" class="button button--secondary" type="button">
+            <span aria-hidden="true">←</span> Geri
+          </button>
+          <button id="nextButton" class="button button--primary" type="button">
+            Geç <span aria-hidden="true">→</span>
+          </button>
+        </div>
+      </article>
+      <p id="viewerCounter" class="viewer-counter"></p>
+    </section>
+
+    <section id="adminView" class="studio" hidden>
+      <header class="studio-header">
+        <a class="studio-brand" href="/">Pichasso</a>
+        <div>
+          <p class="eyebrow">İçerik stüdyosu</p>
+          <h1>Kütüphaneler</h1>
+        </div>
+      </header>
+
+      <section id="adminLogin" class="login-card">
+        <div class="lock-icon" aria-hidden="true">✦</div>
+        <h2>Yönetim anahtarını gir</h2>
+        <p>Bu değer yalnızca bu tarayıcı sekmesinde tutulur.</p>
+        <form id="adminLoginForm">
+          <label for="adminKey">ADMIN_API_KEY</label>
+          <input id="adminKey" type="password" autocomplete="current-password" minlength="32" required>
+          <button class="button button--primary button--wide" type="submit">Stüdyoyu aç</button>
+        </form>
+        <p id="loginError" class="form-error" role="alert"></p>
+      </section>
+
+      <div id="studioWorkspace" class="studio-workspace" hidden>
+        <aside class="library-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Koleksiyonlar</p>
+              <h2>İçerikler</h2>
+            </div>
+            <button id="newLibraryButton" class="small-button" type="button">＋ Yeni</button>
+          </div>
+          <div id="libraryList" class="library-list"></div>
+        </aside>
+
+        <section id="editorEmpty" class="editor-empty">
+          <div class="empty-icon">＋</div>
+          <h2>Bir kütüphane seç</h2>
+          <p>Soldaki listeden seçim yap veya yeni bir kütüphane oluştur.</p>
+        </section>
+
+        <form id="libraryEditor" class="library-editor" hidden>
+          <div class="editor-toolbar">
+            <div>
+              <p class="eyebrow">Düzenleyici</p>
+              <h2 id="editorHeading">Yeni kütüphane</h2>
+            </div>
+            <div class="toolbar-actions">
+              <button id="copyLinkButton" class="small-button" type="button">Bağlantıyı kopyala</button>
+              <button id="deleteLibraryButton" class="small-button small-button--danger" type="button">Sil</button>
+              <button id="saveLibraryButton" class="button button--primary" type="submit">Kaydet</button>
+            </div>
+          </div>
+
+          <p id="editorNotice" class="notice" role="status"></p>
+
+          <div class="form-grid">
+            <label class="field field--wide">Başlık
+              <input id="libraryTitleInput" maxlength="120" required placeholder="Örnek: Hasan Testi">
+            </label>
+            <label class="field">Kısa ad
+              <input id="librarySlugInput" maxlength="80" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" required placeholder="hasan-testi">
+            </label>
+            <label class="field">Yayın durumu
+              <select id="libraryStatusInput">
+                <option value="draft">Taslak</option>
+                <option value="published">Yayında</option>
+              </select>
+            </label>
+            <label class="field field--wide">Açıklama
+              <textarea id="libraryDescriptionInput" maxlength="500" rows="3" placeholder="Bağlantı açıldığında gösterilecek kısa açıklama"></textarea>
+            </label>
+            <label class="field">Vurgu rengi
+              <input id="libraryAccentInput" type="color" value="#ffcf70">
+            </label>
+            <label class="field">Sayfa rengi
+              <input id="libraryBackgroundInput" type="color" value="#16130f">
+            </label>
+          </div>
+
+          <div class="slides-heading">
+            <div>
+              <p class="eyebrow">Kartlar</p>
+              <h2>Fotoğraflar ve sorular</h2>
+            </div>
+            <button id="addSlideButton" class="small-button" type="button">＋ Kart ekle</button>
+          </div>
+          <div id="slidesEditor" class="slides-editor"></div>
+        </form>
+      </div>
+    </section>
+
+    <section id="fatalError" class="fatal-error" hidden>
+      <p class="eyebrow">Bir sorun oluştu</p>
+      <h1 id="fatalErrorTitle">Sayfa yüklenemedi</h1>
+      <p id="fatalErrorMessage"></p>
+      <a class="button button--primary" href="/">Ana sayfaya dön</a>
+    </section>
   </main>
-  <script src="/config.js"></script>
+  <script type="module" src="/config.js"></script>
   <script type="module" src="/app.js"></script>
 </body>
 </html>
