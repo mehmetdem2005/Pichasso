@@ -1,7 +1,7 @@
 export class SupabaseRestClient {
-  constructor({ baseUrl, serviceRoleKey, fetchImpl = fetch }) {
+  constructor({ baseUrl, adminKey, fetchImpl = fetch }) {
     this.baseUrl = baseUrl;
-    this.serviceRoleKey = serviceRoleKey;
+    this.adminKey = adminKey;
     this.fetchImpl = fetchImpl;
   }
 
@@ -9,15 +9,10 @@ export class SupabaseRestClient {
     const url = new URL(`/rest/v1/${path}`, this.baseUrl);
     for (const [key, value] of Object.entries(query)) url.searchParams.set(key, value);
 
-    const response = await this.fetchImpl(url, {
-      method: 'GET',
-      signal,
-      headers: {
-        apikey: this.serviceRoleKey,
-        authorization: `Bearer ${this.serviceRoleKey}`,
-        accept: 'application/json'
-      }
-    });
+    const headers = { apikey: this.adminKey, accept: 'application/json' };
+    if (!this.adminKey.startsWith('sb_secret_')) headers.authorization = `Bearer ${this.adminKey}`;
+
+    const response = await this.fetchImpl(url, { method: 'GET', signal, headers });
 
     if (!response.ok) {
       const detail = await response.text().catch(() => '');
