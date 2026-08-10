@@ -4,7 +4,7 @@ import { loadEnv } from './config/env.mjs';
 import { createSupabaseAdminClient } from './lib/supabase.mjs';
 import { CoreRepository } from './modules/core/core.repository.mjs';
 import { CoreService } from './modules/core/core.service.mjs';
-import { MediaService } from './modules/media/media.service.mjs';
+import { MediaService, SIGNED_READ_TTL_SECONDS } from './modules/media/media.service.mjs';
 import { consumeRateLimit, securityHeaders } from './http/security.mjs';
 import { isAdminRequest } from './http/admin-auth.mjs';
 import { readJson } from './http/body.mjs';
@@ -14,6 +14,8 @@ const env = loadEnv();
 const supabase = createSupabaseAdminClient({ url: env.supabaseUrl, key: env.supabaseAdminKey });
 const coreService = new CoreService(new CoreRepository(supabase));
 const mediaService = new MediaService({ client: supabase, bucket: env.mediaBucket });
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function adminOnly(req, res, headers, requestId) {
   if (isAdminRequest(req, env.adminApiKey)) return true;
@@ -40,10 +42,36 @@ const server = createServer(async (req, res) => {
       return sendJson(res, 200, { status: 'ok' }, baseHeaders);
     }
 
+    if (req.method === 'GET' && url.pathname === '/health/ready') {
+      try {
+        await coreService.getProjectSnapshot('pichasso');
+        return sendJson(res, 200, { status: 'ready' }, baseHeaders);
+      } catch (error) {
+        console.error(JSON.stringify({ level: 'error', requestId, message: error instanceof Error ? error.message : String(error) }));
+        return sendJson(res, 503, { status: 'degraded', error: 'dependency_unavailable', requestId }, baseHeaders);
+      }
+    }
+
     if (req.method === 'GET' && url.pathname === '/api/v1/project') {
       const payload = await coreService.getProjectSnapshot(url.searchParams.get('slug') ?? 'pichasso');
       if (!payload) return sendJson(res, 404, { error: 'project_not_found', requestId }, baseHeaders);
       return sendJson(res, 200, payload, { ...baseHeaders, 'cache-control': 'public, max-age=30, stale-while-revalidate=120' });
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/v1/media') {
+      const moduleId = url.searchParams.get('moduleId');
+      if (moduleId && !UUID_PATTERN.test(moduleId)) {
+        return sendJson(res, 400, { error: 'invalid_module_id', requestId }, baseHeaders);
+      }
+
+      const media = await coreService.getProjectMedia(url.searchParams.get('slug') ?? 'pichasso', { moduleId });
+      if (!media) return sendJson(res, 404, { error: 'project_not_found', requestId }, baseHeaders);
+
+      const assets = await mediaService.attachSignedUrls(media.assets);
+      return sendJson(res, 200, { assets, expiresIn: SIGNED_READ_TTL_SECONDS }, {
+        ...baseHeaders,
+        'cache-control': `private, max-age=${Math.floor(SIGNED_READ_TTL_SECONDS / 2)}`
+      });
     }
 
     if (req.method === 'POST' && url.pathname === '/api/v1/admin/media/sign-upload') {

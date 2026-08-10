@@ -44,8 +44,23 @@ API akışı:
 2. API Supabase Storage için signed upload üretir.
 3. Dosya Storage'a yüklenir.
 4. `POST /api/v1/admin/media/complete` ile `media_assets` metadata kaydı tamamlanır.
+5. `GET /api/v1/media` kayıtlı görselleri kısa ömürlü signed download URL'leri ile döner.
+
+Bucket private kaldığı için okuma yalnızca API'nin ürettiği signed URL üzerinden yapılır.
+Yanıt `storage_bucket` ve `storage_path` alanlarını dışarı sızdırmaz.
 
 Admin uçları `x-admin-key` header'ı ile korunur.
+
+## Uçlar
+
+| Method | Path | Erişim |
+| --- | --- | --- |
+| GET | `/health` | Public |
+| GET | `/health/ready` | Public, Supabase bağlantısını doğrular |
+| GET | `/api/v1/project?slug=` | Public |
+| GET | `/api/v1/media?slug=&moduleId=` | Public, signed URL üretir |
+| POST | `/api/v1/admin/media/sign-upload` | `x-admin-key` |
+| POST | `/api/v1/admin/media/complete` | `x-admin-key` |
 
 ## Ortam değişkenleri
 

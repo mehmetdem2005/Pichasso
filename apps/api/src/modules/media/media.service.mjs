@@ -2,6 +2,9 @@ import { randomUUID } from 'node:crypto';
 import { extname } from 'node:path';
 
 const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/avif']);
+const SIGNED_READ_TTL_SECONDS = 600;
+
+export { SIGNED_READ_TTL_SECONDS };
 
 function safeExtension(filename) {
   const ext = extname(filename || '').toLowerCase();
@@ -35,5 +38,22 @@ export class MediaService {
       token: data.token,
       signedUrl: data.signedUrl
     };
+  }
+
+  async attachSignedUrls(assets, expiresInSeconds = SIGNED_READ_TTL_SECONDS) {
+    const readable = assets.filter((asset) => asset.bucket === this.bucket);
+    if (readable.length === 0) return [];
+
+    const { data, error } = await this.client.storage
+      .from(this.bucket)
+      .createSignedUrls(readable.map((asset) => asset.path), expiresInSeconds);
+
+    if (error) throw new Error(`Signed download creation failed: ${error.message}`);
+
+    const urlsByPath = new Map((data ?? []).map((entry) => [entry.path, entry.signedUrl]));
+
+    return readable
+      .map(({ bucket, path, ...asset }) => ({ ...asset, url: urlsByPath.get(path) ?? null }))
+      .filter((asset) => asset.url !== null);
   }
 }

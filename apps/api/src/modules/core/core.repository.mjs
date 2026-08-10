@@ -35,6 +35,37 @@ export class CoreRepository {
     }));
   }
 
+  async listMediaAssets(projectId, { moduleId = null } = {}) {
+    let query = this.client
+      .from('media_assets')
+      .select('id,project_id,module_id,storage_bucket,storage_path,original_name,mime_type,byte_size,width,height,sort_order,metadata,created_at')
+      .eq('project_id', projectId);
+
+    if (moduleId) query = query.eq('module_id', moduleId);
+
+    const { data, error } = await query
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: true });
+
+    if (error) throw new Error(`Media asset query failed: ${error.message}`);
+
+    return (data ?? []).map((row) => ({
+      id: row.id,
+      projectId: row.project_id,
+      moduleId: row.module_id,
+      bucket: row.storage_bucket,
+      path: row.storage_path,
+      originalName: row.original_name,
+      mimeType: row.mime_type,
+      byteSize: row.byte_size,
+      width: row.width,
+      height: row.height,
+      sortOrder: row.sort_order,
+      metadata: row.metadata ?? {},
+      createdAt: row.created_at
+    }));
+  }
+
   async createMediaAsset(input) {
     const { data, error } = await this.client
       .from('media_assets')

@@ -3,7 +3,7 @@ services:
     name: pichasso-api
     runtime: node
     plan: free
-    buildCommand: npm run verify
+    buildCommand: npm ci --omit=dev && npm run verify
     startCommand: npm run start:api
     healthCheckPath: /health
     envVars:
@@ -34,6 +34,16 @@ services:
     envVars:
       - key: API_BASE_URL
         sync: false
+    headers:
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: Referrer-Policy
+        value: no-referrer
     routes:
       - type: rewrite
         source: /*
