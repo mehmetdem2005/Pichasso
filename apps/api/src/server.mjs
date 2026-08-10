@@ -8,7 +8,7 @@ import { consumeRateLimit, securityHeaders } from './http/security.mjs';
 import { sendJson } from './http/respond.mjs';
 
 const env = loadEnv();
-const db = new SupabaseRestClient({ baseUrl: env.supabaseUrl, serviceRoleKey: env.supabaseServiceRoleKey });
+const db = new SupabaseRestClient({ baseUrl: env.supabaseUrl, adminKey: env.supabaseAdminKey });
 const cardsService = new CardsService(new CardsRepository(db));
 
 const server = createServer(async (req, res) => {
