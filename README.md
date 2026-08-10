@@ -1,48 +1,74 @@
 # Pichasso
 
-Kişiye özel mizah modüllerini Supabase verisinden üreten, Render üzerinde web + API olarak ayrılmış bir web uygulaması.
+Pichasso şu anda yalnızca altyapı içerir. İçerik, mizah, görsel stil ve modül davranışları seed edilmez; her modül ancak fikir onaylandıktan sonra eklenir.
 
 ## Mimari
 
-- `apps/web`: Bağımlılıksız statik istemci. Yalnızca Pichasso API ile konuşur.
-- `apps/api`: Node.js 20 HTTP servisi. Supabase secret/admin anahtarının tek sahibi.
-- `packages/contracts`: API veri sözleşmesi ve runtime doğrulaması.
-- `supabase/migrations`: Şema, RLS ve başlangıç içerikleri.
-- `scripts/check-architecture.mjs`: Web/API katman sınırlarını denetleyen anti-spaghetti kontrolü.
-- `render.yaml`: Render Blueprint; statik web ve API iki ayrı servis.
-
 Akış: `Browser -> Render Web -> Render API -> Supabase`.
 
-## Neden frontend doğrudan Supabase'e bağlanmıyor?
+- `apps/web`: Public istemci kabuğu. Supabase'e doğrudan bağlanmaz.
+- `apps/api`: Node.js API. Supabase admin anahtarı yalnızca burada bulunur.
+- `apps/api/src/modules/core`: Proje, modül ve medya metadata iş kuralları.
+- `apps/api/src/modules/media`: Supabase Storage signed-upload altyapısı.
+- `packages/contracts`: Katmanlar arası nötr veri sözleşmeleri.
+- `supabase/migrations`: `projects`, `modules`, `media_assets` şeması.
+- `scripts/check-architecture.mjs`: Katman sınırlarını denetleyen anti-spaghetti kontrolü.
+- `render.yaml`: Render API + static web Blueprint.
 
-Supabase `sb_secret_...` anahtarı hiçbir zaman tarayıcıya gitmez. Veri erişimi repository katmanında kalır; server, service ve database sorumlulukları birbirine karışmaz. Admin paneli, analitik veya farklı veri kaynağı eklemek gerektiğinde frontend mimarisi değişmez.
+## Veri modeli
 
-## Lokal doğrulama
+`projects`
+- Uygulama/proje kökü.
+
+`modules`
+- Sonradan eklenecek her ayrı fikir/mekanizma için nötr kayıt.
+- `kind` ve `config` alanları fikir gelene kadar herhangi bir davranış varsaymaz.
+
+`media_assets`
+- Fotoğraf/görsel metadata kaydı.
+- Dosyanın kendisi Supabase Storage'da tutulur.
+- Bir asset proje geneline veya belirli bir module bağlanabilir.
+
+Başlangıç migration'ında hiçbir mizah içeriği veya örnek modül yoktur.
+
+## Fotoğraf yükleme altyapısı
+
+Supabase Dashboard üzerinden private bir `pichasso-media` bucket oluştur.
+
+Önerilen kısıtlar:
+- MIME: `image/jpeg`, `image/png`, `image/webp`, `image/avif`
+- Maksimum dosya boyutu: ihtiyaca göre belirle; başlangıç için 10 MB uygundur.
+
+API akışı:
+1. Admin istemci `POST /api/v1/admin/media/sign-upload` çağırır.
+2. API Supabase Storage için signed upload üretir.
+3. Dosya Storage'a yüklenir.
+4. `POST /api/v1/admin/media/complete` ile `media_assets` metadata kaydı tamamlanır.
+
+Admin uçları `x-admin-key` header'ı ile korunur.
+
+## Ortam değişkenleri
+
+API:
+- `SUPABASE_URL`
+- `SUPABASE_SECRET_KEY`
+- `ADMIN_API_KEY`
+- `MEDIA_BUCKET=pichasso-media`
+- `WEB_ORIGIN`
+
+Web build:
+- `API_BASE_URL`
+
+## Render
+
+`render.yaml` iki servis tanımlar:
+- `pichasso-api`
+- `pichasso-web`
+
+## Kontrol
 
 ```bash
 npm run verify
 ```
 
-Bu komut mimari sınır kontrolünü ve Node testlerini çalıştırır. Projede harici npm runtime bağımlılığı yoktur.
-
-## Supabase kurulumu
-
-`supabase/migrations/001_init.sql` dosyasını Supabase SQL Editor veya CLI üzerinden uygula. `humor_cards` tablosu RLS ile kapalıdır; anon/authenticated rolleri tabloya doğrudan erişemez.
-
-Başlangıç verisinde elma, lahmacun, siyah renk, ev modu, kurt ve fiziksel tip tercihi için birbirinden farklı etkileşim modülleri vardır. Sağlık/mental sağlık gibi hassas kişisel bilgi başlangıç verisine bilerek eklenmemiştir.
-
-## Render kurulumu
-
-Repo Render'a Blueprint olarak bağlandığında `render.yaml` iki servis tanımlar.
-
-API secret/env:
-- `SUPABASE_URL`
-- `SUPABASE_SECRET_KEY` (önerilen yeni `sb_secret_...` anahtarı)
-- `WEB_ORIGIN` = deploy edilen `pichasso-web` adresi
-
-Web build env:
-- `API_BASE_URL` = deploy edilen `pichasso-api` adresi
-
-`WEB_ORIGIN` ve `API_BASE_URL` birbirinin gerçek Render URL'leri ile doldurulmalıdır.
-
-Kod, geçiş dönemi için eski `SUPABASE_SERVICE_ROLE_KEY` değişkenini de yedek olarak kabul eder; yeni kurulumda kullanılmamalıdır.
+Bu komut servis testlerini ve mimari sınır kontrolünü çalıştırır.
